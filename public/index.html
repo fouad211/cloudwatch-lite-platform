@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CloudWatch Lite Platform</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:linear-gradient(135deg,#020617,#0f172a,#172554);color:#e5e7eb;min-height:100vh}
+.container{width:94%;max-width:1400px;margin:auto;padding:24px 0}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.logo h1{font-size:32px}
+.logo span{color:#38bdf8}
+.logo p{color:#94a3b8;margin-top:6px}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+button{border:0;padding:11px 15px;border-radius:10px;font-weight:bold;cursor:pointer;background:#38bdf8;color:#020617}
+button.secondary{background:#1e293b;color:white;border:1px solid #334155}
+button.danger{background:#ef4444;color:white}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.card,.stat{background:rgba(2,6,23,.9);border:1px solid rgba(148,163,184,.2);border-radius:18px;padding:20px;box-shadow:0 18px 45px rgba(0,0,0,.35)}
+.stat p{color:#94a3b8}
+.stat h2{font-size:34px;margin-top:10px;color:#38bdf8}
+input{width:100%;padding:12px;margin:8px 0;border-radius:10px;border:1px solid #334155;background:#020617;color:white}
+.section-title{margin-bottom:15px;display:flex;justify-content:space-between;align-items:center}
+.server{background:#111827;border:1px solid #334155;padding:15px;border-radius:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.badge{display:inline-block;padding:5px 9px;border-radius:20px;background:#1e293b;color:#93c5fd;font-size:12px;margin-top:8px}
+.alert{background:#111827;border-left:5px solid #38bdf8;padding:14px;border-radius:12px;margin-bottom:10px}
+.critical{border-left-color:#ef4444}.high{border-left-color:#f97316}.medium{border-left-color:#eab308}.low{border-left-color:#22c55e}
+.bar-box{margin-top:12px}
+.bar-label{display:flex;justify-content:space-between;color:#cbd5e1;font-size:13px;margin-bottom:5px}
+.bar{height:10px;background:#1e293b;border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,#38bdf8,#22c55e);border-radius:999px}
+.warn{background:linear-gradient(90deg,#f97316,#ef4444)}
+.chart{display:flex;align-items:end;gap:8px;height:180px;border-bottom:1px solid #334155;padding-top:20px}
+.chart-bar{flex:1;background:linear-gradient(180deg,#38bdf8,#1d4ed8);border-radius:8px 8px 0 0;min-height:8px}
+pre{color:#cbd5e1;white-space:pre-wrap;font-size:13px}
+.hidden{display:none}
+.footer{margin-top:20px;color:#94a3b8;text-align:center}
+.auth-box{max-width:520px;margin:40px auto}
+@media(max-width:900px){.grid,.stats{grid-template-columns:1fr}.header{flex-direction:column;align-items:start;gap:15px}}
+</style>
+</head>
+
+<body>
+
+<div id="authSection" class="container">
+  <div class="auth-box card">
+    <h1>CloudWatch <span style="color:#38bdf8">Lite</span></h1>
+    <p style="color:#94a3b8;margin:10px 0 20px">Login to Infrastructure Monitoring Platform</p>
+
+    <h3>Create Account</h3>
+    <input id="regName" placeholder="Name">
+    <input id="regEmail" placeholder="Email">
+    <input id="regPassword" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
+
+    <hr style="border-color:#334155;margin:25px 0">
+
+    <h3>Login</h3>
+    <input id="loginEmail" placeholder="Email">
+    <input id="loginPassword" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+
+    <hr style="border-color:#334155;margin:25px 0">
+
+    <h3>Reset Password</h3>
+    <input id="resetEmail" placeholder="Email">
+    <input id="newPassword" type="password" placeholder="New password">
+    <button class="secondary" onclick="resetUserPassword()">Reset Password</button>
+
+    <p id="authMsg" style="color:#93c5fd;margin-top:15px"></p>
+  </div>
+</div>
+
+<div id="appSection" class="container hidden">
+
+  <div class="header">
+    <div class="logo">
+      <h1>CloudWatch <span>Lite</span></h1>
+      <p>Infrastructure Monitoring • Alerts • Cost Optimization</p>
+    </div>
+
+    <div class="actions">
+      <button onclick="simulate()">Simulate Metrics</button>
+      <button class="secondary" onclick="loadAll()">Refresh</button>
+      <button class="danger" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><p>Servers</p><h2 id="serversCount">0</h2></div>
+    <div class="stat"><p>Open Alerts</p><h2 id="alertsCount">0</h2></div>
+    <div class="stat"><p>Monthly Cost</p><h2 id="monthlyCost">$0</h2></div>
+    <div class="stat"><p>Status</p><h2 id="systemStatus">OK</h2></div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="section-title"><h2>Add Cloud Server</h2></div>
+
+      <input id="serverName" placeholder="Server name e.g. web-server-02">
+      <input id="provider" placeholder="Provider e.g. AWS / Azure">
+      <input id="region" placeholder="Region e.g. eu-west-1">
+      <input id="instanceType" placeholder="Instance type e.g. t3.micro">
+      <input id="hourlyRate" placeholder="Hourly rate e.g. 0.0104">
+
+      <button onclick="addServer()">Add Server</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title"><h2>CPU Usage Overview</h2></div>
+      <div id="cpuChart" class="chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title"><h2>Servers Health</h2></div>
+      <div id="serversList"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title"><h2>Latest Alerts</h2></div>
+      <div id="alertsList"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title"><h2>Cost Breakdown</h2></div>
+      <div id="costsList"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title"><h2>System Health</h2></div>
+      <pre id="healthBox">Loading...</pre>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Built with Node.js, MongoDB, Redis, Docker, Docker Compose and Nginx.
+  </div>
+
+</div>
+
+<script>
+let token = localStorage.getItem("cloudwatch_token");
+
+function authHeaders(){
+  return {
+    "Content-Type":"application/json",
+    "Authorization":"Bearer " + token
+  };
+}
+
+function init(){
+  if(token){
+    authSection.classList.add("hidden");
+    appSection.classList.remove("hidden");
+    loadAll();
+  }else{
+    authSection.classList.remove("hidden");
+    appSection.classList.add("hidden");
+  }
+}
+
+async function register(){
+  const res = await fetch("/api/auth/register",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      name:regName.value,
+      email:regEmail.value,
+      password:regPassword.value
+    })
+  });
+
+  const data = await res.json();
+  authMsg.innerText = data.message || "Done";
+}
+
+async function login(){
+  const res = await fetch("/api/auth/login",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      email:loginEmail.value,
+      password:loginPassword.value
+    })
+  });
+
+  const data = await res.json();
+
+  if(res.ok){
+    localStorage.setItem("cloudwatch_token",data.token);
+    token = data.token;
+    init();
+  }else{
+    authMsg.innerText = data.message || "Login failed";
+  }
+}
+
+async function resetUserPassword(){
+  const res = await fetch("/api/auth/reset-password",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      email:resetEmail.value,
+      newPassword:newPassword.value
+    })
+  });
+
+  const data = await res.json();
+  authMsg.innerText = data.message || "Done";
+}
+
+function logout(){
+  localStorage.removeItem("cloudwatch_token");
+  token = null;
+  init();
+}
+
+async function addServer(){
+  await fetch("/api/servers",{
+    method:"POST",
+    headers:authHeaders(),
+    body:JSON.stringify({
+      name:serverName.value,
+      provider:provider.value || "AWS",
+      region:region.value || "eu-west-1",
+      instanceType:instanceType.value || "t3.micro",
+      hourlyRate:Number(hourlyRate.value) || 0.0104
+    })
+  });
+
+  serverName.value="";
+  provider.value="";
+  region.value="";
+  instanceType.value="";
+  hourlyRate.value="";
+
+  loadAll();
+}
+
+async function simulate(){
+  await fetch("/api/simulate",{
+    method:"POST",
+    headers:authHeaders()
+  });
+  loadAll();
+}
+
+function bar(label,value){
+  const warning = value >= 80 ? "warn" : "";
+
+  return `
+    <div class="bar-box">
+      <div class="bar-label">
+        <span>${label}</span>
+        <span>${value}%</span>
+      </div>
+      <div class="bar">
+        <div class="bar-fill ${warning}" style="width:${value}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadDashboard(){
+  const res = await fetch("/api/dashboard",{headers:authHeaders()});
+
+  if(res.status === 401){
+    logout();
+    return;
+  }
+
+  const data = await res.json();
+
+  serversCount.innerText = data.servers.length;
+  alertsCount.innerText = data.alerts.filter(a => a.status === "open").length;
+  monthlyCost.innerText = "$" + data.totalMonthly;
+  systemStatus.innerText = "OK";
+
+  serversList.innerHTML = data.latestMetrics.map(item => `
+    <div class="server">
+      <div class="row">
+        <div>
+          <h3>${item.server.name}</h3>
+          <span class="badge">${item.server.provider}</span>
+          <span class="badge">${item.server.region}</span>
+          <span class="badge">${item.server.instanceType}</span>
+        </div>
+        <strong>${item.server.status.toUpperCase()}</strong>
+      </div>
+
+      ${bar("CPU", item.metric.cpu)}
+      ${bar("Memory", item.metric.memory)}
+      ${bar("Disk", item.metric.disk)}
+    </div>
+  `).join("");
+
+  alertsList.innerHTML = data.alerts.length ? data.alerts.map(a => `
+    <div class="alert ${a.severity}">
+      <strong>${a.message}</strong>
+      <p>${a.serverId ? a.serverId.name : "Unknown server"}</p>
+      <span class="badge">${a.severity}</span>
+      <span class="badge">${a.status}</span>
+    </div>
+  `).join("") : "<p>No alerts yet.</p>";
+
+  costsList.innerHTML = data.costs.map(c => `
+    <div class="server">
+      <h3>${c.name}</h3>
+      <span class="badge">${c.provider}</span>
+      <span class="badge">${c.instanceType}</span>
+      <p style="margin-top:10px">Daily: $${c.daily}</p>
+      <p>Monthly: $${c.monthly}</p>
+    </div>
+  `).join("");
+
+  cpuChart.innerHTML = data.latestMetrics.map(item => {
+    const h = Math.max(item.metric.cpu,5);
+    return `<div class="chart-bar" title="${item.server.name}: ${item.metric.cpu}%" style="height:${h}%"></div>`;
+  }).join("");
+}
+
+async function loadHealth(){
+  const res = await fetch("/health");
+  healthBox.innerText = JSON.stringify(await res.json(),null,2);
+}
+
+function loadAll(){
+  if(!token) return;
+  loadDashboard();
+  loadHealth();
+}
+
+setInterval(loadAll,5000);
+init();
+</script>
+
+</body>
+</html>
