@@ -7,14 +7,13 @@ on:
 
 env:
   IMAGE_NAME: ghcr.io/fouad211/cloudwatch-lite-platform
-  GITOPS_REPO: https://github.com/fouad211/devops-gitops.git
 
 jobs:
   build-test-security-push-update-gitops:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      contents: write
       packages: write
       security-events: write
 
@@ -41,12 +40,12 @@ jobs:
       - name: Basic image test
         run: |
           docker load -i image.tar
-          docker run -d --name test-app -p 3000:3000 $IMAGE_NAME:${{ github.sha }}
+          docker run -d --name test-cloudwatch -p 3000:3000 $IMAGE_NAME:${{ github.sha }}
           sleep 10
           docker ps
-          docker logs test-app
-          docker stop test-app
-          docker rm test-app
+          docker logs test-cloudwatch
+          docker stop test-cloudwatch
+          docker rm test-cloudwatch
 
       - name: Trivy security scan
         uses: aquasecurity/trivy-action@master
